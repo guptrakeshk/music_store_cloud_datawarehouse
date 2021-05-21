@@ -71,7 +71,7 @@ staging_songs_table_create = (""" CREATE TABLE IF NOT EXISTS staging_songs
 # SQL queries to create database tables for fact and dimension tables
 # CREATE TABLES
 
-# 
+# Fact table to store user activities 
 songplay_table_create = (""" CREATE TABLE IF NOT EXISTS songplays 
                          (songplay_id int identity(0,1) PRIMARY KEY, 
                          start_time timestamp, 
@@ -85,6 +85,7 @@ songplay_table_create = (""" CREATE TABLE IF NOT EXISTS songplays
                          COMPOUND SORTKEY (song_id,artist_id);
                          """)
 
+# Users dimension table
 user_table_create = (""" CREATE TABLE IF NOT EXISTS users 
                         (user_id int NOT NULL PRIMARY KEY, 
                         first_name varchar, 
@@ -95,6 +96,7 @@ user_table_create = (""" CREATE TABLE IF NOT EXISTS users
                         COMPOUND SORTKEY(first_name, last_name);
                         """)
 
+# Songs dimension table
 song_table_create = (""" CREATE TABLE IF NOT EXISTS songs 
                         (song_id varchar NOT NULL PRIMARY KEY, 
                         title varchar NOT NULL, 
@@ -104,7 +106,7 @@ song_table_create = (""" CREATE TABLE IF NOT EXISTS songs
                         DISTKEY (song_id) 
                         SORTKEY (artist_id);
                         """)
-
+# Artists dimension table
 artist_table_create = (""" CREATE TABLE IF NOT EXISTS artists 
                         (artist_id varchar NOT NULL PRIMARY KEY, 
                         name varchar NOT NULL, 
@@ -114,7 +116,7 @@ artist_table_create = (""" CREATE TABLE IF NOT EXISTS artists
                         diststyle all 
                         COMPOUND SORTKEY (name,location);
                         """)
-
+# Time dimension table
 time_table_create = (""" CREATE TABLE IF NOT EXISTS time 
                         (start_time timestamp NOT NULL PRIMARY KEY, 
                         hour int, 
@@ -134,7 +136,6 @@ LOG_JSONPATH=config.get('S3','LOG_JSONPATH')
 IAM_ROLE_ARN=config.get('IAM_ROLE','ARN')
 REGION='us-west-2'
 
-#print("ARN = ", IAM_ROLE_ARN)
 
 # STAGING TABLES 
 
@@ -169,33 +170,31 @@ staging_songs_copy = (""" COPY staging_songs FROM {}
 # Note: Pay attention to SELECT distinct userId records where userId is NOT NULL
 # It is to avoid any situation where userId is null and still attempt to get inserted into
 # a NOT NULL primary key column of users table.
+
 user_table_insert = (""" INSERT INTO users (user_id, first_name, last_name, gender, level ) 
                     SELECT distinct(userId), firstName, lastName, gender, level
                     FROM staging_events
                     WHERE userId IS NOT NULL;
                     """)
 
-song_table_insert = (""" INSERT INTO songs(song_id, title, artist_id, year, duration) 
-                    SELECT song_id, title, artist_id, year, duration
-                    FROM staging_songs;
-                    """)
 # Note: Pay attention to SELECT distinct artist_id records where artist_id is NOT NULL.
 # It is to avoid any situation where artist_id is null and still attempt to get inserted into
 # a NOT NULL primary key column of artists table.
+
 artist_table_insert = (""" INSERT INTO artists(artist_id, name, location, latitude, longitude) 
                     SELECT distinct(artist_id), artist_name, artist_location,artist_latitude, artist_longitude
                     FROM staging_songs
                     WHERE artist_id is NOT NULL;
                         """)
 
-songplay_table_insert = (""" INSERT INTO songplays (start_time, user_id, song_id, artist_id, session_id,
-                            location, user_agent) 
-                    SELECT log.ts, log.userId, song.song_id, song.artist_id, log.sessionId,
-                        log.location, log.userAgent
-                    FROM staging_songs song
-                    JOIN staging_events log ON (song.artist_name = log.artist);
-                            """)
+# Inserting data into songs dimension table 
+song_table_insert = (""" INSERT INTO songs(song_id, title, artist_id, year, duration) 
+                    SELECT song_id, title, artist_id, year, duration
+                    FROM staging_songs;
+                    """)
 
+# Note: Pay attention to SELECT statement that is transforming timestamp field into appropriate
+# readable format to capture Hour, Day, Week, Month, Year and Weekday.
 time_table_insert = ("""INSERT INTO time (start_time, hour, day, week, month, year, weekday)
                     SELECT  distinct(ts) as start_time,
                     EXTRACT (HOUR FROM ts) AS hour, 
@@ -206,6 +205,15 @@ time_table_insert = ("""INSERT INTO time (start_time, hour, day, week, month, ye
                     EXTRACT (WEEKDAY FROM ts) AS weekday 
                     FROM staging_events;
                     """)
+
+# Inserting data into Fact table to capture song play activities by the user.
+songplay_table_insert = (""" INSERT INTO songplays (start_time, user_id, song_id, artist_id, session_id,
+                            location, user_agent) 
+                    SELECT log.ts, log.userId, song.song_id, song.artist_id, log.sessionId,
+                        log.location, log.userAgent
+                    FROM staging_songs song
+                    JOIN staging_events log ON (song.artist_name = log.artist);
+                            """)
 
 # QUERY LISTS
 

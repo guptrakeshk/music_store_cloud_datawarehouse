@@ -4,7 +4,15 @@ from sql_queries import copy_table_queries, insert_table_queries
 
 
 def load_staging_tables(cur, conn):
-    """ This function executes all queries to run COPY command to load staging tables
+    """ 
+    This function executes all queries to run COPY command to load staging tables
+    
+    Parameters:
+        cur : The DB connection cursor handle to allow executing query
+        conn: The DB connection object
+    Raises:
+        Exception: An error occured while loading data into a table
+    
     """
     for query in copy_table_queries:
         try:
@@ -15,8 +23,16 @@ def load_staging_tables(cur, conn):
 
 
 def insert_tables(cur, conn):
-    """ This function executes all queries to load data into final tables from 
-        staging tables which was earlier populated using COPY command.
+    """ 
+    This function executes all queries to load data into final tables from 
+    staging tables which was earlier populated using COPY command.
+    
+    Parameters:
+        cur : The DB connection cursor handle to allow executing query
+        conn: The DB connection object
+    
+    Raises:
+        Exception: An error occured while inserting values into a table
     """
     for query in insert_table_queries:
         try:

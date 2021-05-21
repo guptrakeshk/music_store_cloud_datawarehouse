@@ -6,6 +6,13 @@ from sql_queries import create_table_queries, drop_table_queries
 def drop_tables(cur, conn):
     """
     Drops each table using the queries in `drop_table_queries` list.
+    
+    Args:
+        cur : The DB connection cursor handle to allow executing query
+        conn: The DB connection object
+    
+    Raises:
+        Error :An error occured while creating a table
     """
     for query in drop_table_queries:
         try:
@@ -39,6 +46,13 @@ def show_tables(cur, conn):
 def create_tables(cur, conn):
     """
     Creates each table using the query in `create_table_queries` list. 
+    
+    Args:
+        cur : The DB connection cursor handle to allow executing query
+        conn: The DB connection object
+    
+    Raises:
+        Error :An error occured while creating a table
     """
     for query in create_table_queries:
         try:
